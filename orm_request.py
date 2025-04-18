@@ -1,4 +1,17 @@
 
+gen = Genre.objects.create(name="Фэнтези")
+mov = Movie.objects.create(title="Локи")
+mov.genres.set=([gen])
+
+user = User.objects.create(username="User10")
+
+mov1 = Movie.objects.get(title="Локи")
+user = User.objects.get(username="agbar")
+rew = Review.objects.create(movie=mov1, author=user, text="The best movie", rating=9)
+
+
+
+
 #1
 top_m = Movie.objects.annotate(res=Count("reviews")).order_by('-res')[:3]
 
