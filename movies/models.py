@@ -21,6 +21,7 @@ class Movie(models.Model):
     year = models.PositiveIntegerField(null=True, blank=True, default=2025)
     country = models.CharField(max_length=255, null=True, blank=True)
     average_rating = models.FloatField(null=True, blank=True)
+    slug = models.SlugField(unique=True, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Фильм'
