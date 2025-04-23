@@ -1,8 +1,10 @@
 from asyncio import start_server
+from enum import unique
 
+from django.utils.text import slugify
 from rest_framework import serializers
 
-from orm_request import movie
+
 from .models import *
 
 
@@ -24,13 +26,13 @@ class MovieReadSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        representation['title'] = f"{instance.title} ({instance.year})"
         if instance.reviews.exists():
             review_serializer = ReviewSerializer(instance.reviews.all(), many=True)
             representation['reviews'] = review_serializer.data
         else:
             representation['reviews'] = []
         return representation
-
 
 
 class MovieWriteSerializer(serializers.ModelSerializer):
@@ -54,3 +56,41 @@ class ReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Рейтинг должен быть от 1 до 10")
         return value
 
+    def validate(self, data):
+        user = self.context['request'].user
+        movie = data.get('movie')
+
+        if self.instance is None:
+            if Review.objects.filter(author=user, movie=movie).exists():
+                raise serializers.ValidationError("Вы уже оставили отзыв на этот фильм.")
+        return data
+
+
+class MovieStatsSerializer(serializers.ModelSerializer):
+    reviews_count = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Movie
+        fields = ("title", "reviews_count", "average_rating")
+
+    def get_reviews_count(self, obj):
+        return obj.reviews.count()
+
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews.exists():
+            return round(sum(review.rating for review in reviews) / reviews.count(), 2)
+        return None
+
+
+class MovieSerializer(serializers.ModelSerializer):
+    slug = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Movie
+        fields = ['title', 'slug', 'description']
+
+    def create(self, validated_data):
+        validated_data['slug'] = slugify(validated_data['title'])
+        return super().create(validated_data)
